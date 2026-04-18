@@ -365,6 +365,12 @@ document.addEventListener('DOMContentLoaded', () => {
     onLoginSuccess(active);
   } else {
     initLogin();
+    // Auto-sync in background so new devices get the latest passwords and settings before logging in
+    if (window.DB && DB.syncFromCloud) {
+      DB.syncFromCloud().then(count => {
+        if (count > 0) console.log('Auto-synced ' + count + ' items from cloud.');
+      }).catch(e => console.log('Auto-sync failed:', e));
+    }
   }
 });
 
