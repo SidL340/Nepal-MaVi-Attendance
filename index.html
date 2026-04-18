@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>हाजिरी व्यवस्थापन प्रणाली | Nepal School Attendance System</title>
+  <meta name="description" content="Nepal government school attendance management system with Bikram Sambat calendar. EMIS-compatible student attendance tracker.">
+  <meta name="theme-color" content="#c0392b">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles/main.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- SPLASH / LOGIN SCREEN -->
+<div id="splash-screen">
+  <div class="splash-logo">
+    <div class="splash-emblem">🏫</div>
+    <div class="splash-title">हाजिरी व्यवस्थापन प्रणाली</div>
+    <div class="splash-subtitle">Nepal School Attendance Management System<br>
+      <small style="color:var(--text-muted)">विक्रम सम्वत् २०८३ | Bikram Sambat 2083</small>
+    </div>
+  </div>
+
+  <div class="login-card">
+    <div class="login-card-header">
+      <div class="login-card-icon">🔐</div>
+      <h2>लगइन गर्नुहोस्</h2>
+      <p>Please enter your credentials to continue</p>
+    </div>
+
+    <div id="login-error" class="login-error hidden">
+      ❌ गलत ID वा पासवर्ड। Invalid User ID or Password.
+    </div>
+
+    <div class="form-group">
+      <label>प्रयोगकर्ता ID / User ID</label>
+      <input type="text" id="login-username"
+        placeholder="e.g. admin, class1, ECD"
+        autocomplete="username" spellcheck="false"
+        style="font-size:1rem;letter-spacing:0.02em">
+    </div>
+
+    <div class="form-group">
+      <label>पासवर्ड / Password</label>
+      <div style="position:relative">
+        <input type="password" id="login-password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          style="font-size:1rem;padding-right:44px">
+        <button type="button" id="toggle-pw-btn"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;padding:4px">
+          👁
+        </button>
+      </div>
+    </div>
+
+    <button id="login-btn" class="btn btn-primary" style="width:100%;margin-top:8px;padding:14px;font-size:1rem">
+      🔓 लगइन / Login
+    </button>
+
+    <div class="login-hints">
+      <div>🔑 Admin: <code>admin</code> / <code>admin123</code></div>
+      <div>🎓 Class Teacher: <code>class1</code> / <code>password1</code></div>
+    </div>
+  </div>
+
+  <p style="color:var(--text-muted);font-size:0.8rem;text-align:center;margin-top:4px">
+    Nepal Education Management Information System (EMIS) Compatible
+  </p>
+</div>
+
+<!-- APP SHELL -->
+<div id="app-shell" class="hidden">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">🏫</div>
+      <div class="school-name" id="sidebar-school-name">सरकारी विद्यालय</div>
+      <div class="school-tagline">हाजिरी व्यवस्थापन प्रणाली</div>
+    </div>
+    <div class="sidebar-teacher">
+      <div class="teacher-avatar" id="sidebar-teacher-avatar">?</div>
+      <div class="teacher-info">
+        <div class="name" id="sidebar-teacher-name">—</div>
+        <div class="role" id="sidebar-teacher-role">Teacher</div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-title">मुख्य मेनु</div>
+      <button class="nav-item active" data-page="dashboard"><span class="nav-icon">📊</span><span>ड्यासबोर्ड</span></button>
+      <button class="nav-item" data-page="attendance"><span class="nav-icon">✅</span><span>हाजिरी</span></button>
+      <button class="nav-item" data-page="students">
+        <span class="nav-icon">🎒</span><span>विद्यार्थी व्यवस्थापन</span>
+        <span class="nav-badge" id="student-count-badge">0</span>
+      </button>
+      <button class="nav-item" data-page="reports"><span class="nav-icon">📈</span><span>प्रतिवेदन</span></button>
+      <div class="nav-section-title">डेटा</div>
+      <button class="nav-item" data-page="import"><span class="nav-icon">📤</span><span>आयात / निर्यात</span></button>
+      <button class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span><span>सेटिङ</span></button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="bs-date-badge">
+        <div class="bs-day" id="sidebar-day">—</div>
+        <div class="bs-month-year" id="sidebar-month-year">— BS</div>
+        <div class="bs-weekday" id="sidebar-weekday">—</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn" style="justify-content:center">🔄 शिक्षक बदल्नुहोस्</button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button id="mobile-menu-btn" class="btn btn-ghost btn-icon mobile-only" style="padding:4px 8px;font-size:1.4rem;">☰</button>
+        <div class="topbar-title" id="topbar-page-title">📊 ड्यासबोर्ड</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="navigateTo('attendance')">✅ हाजिरी लिनुहोस्</button>
+        <button class="btn btn-primary btn-sm" onclick="navigateTo('students')">+ विद्यार्थी</button>
+      </div>
+    </header>
+
+    <!-- ══ DASHBOARD ══ -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <h1>📊 ड्यासबोर्ड</h1>
+          <div class="page-subtitle">आजको विद्यालय अवस्था — Today's School Overview</div>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card clr-blue"><div class="stat-icon">👥</div><div class="stat-value" id="dash-total-students">0</div><div class="stat-label">जम्मा विद्यार्थी | Total Students</div></div>
+        <div class="stat-card clr-green"><div class="stat-icon">✅</div><div class="stat-value" id="dash-today-present">0</div><div class="stat-label">आज उपस्थित | Present Today</div></div>
+        <div class="stat-card clr-red"><div class="stat-icon">❌</div><div class="stat-value" id="dash-today-absent">0</div><div class="stat-label">आज अनुपस्थित | Absent Today</div></div>
+      </div>
+      <div class="quick-actions">
+        <button class="quick-action-btn" onclick="navigateTo('attendance')"><span class="qa-icon">✅</span><span>हाजिरी लिनुहोस्<br><small>Take Attendance</small></span></button>
+        <button class="quick-action-btn" onclick="navigateTo('students')"><span class="qa-icon">➕</span><span>विद्यार्थी थप्नुहोस्<br><small>Add Student</small></span></button>
+        <button class="quick-action-btn" onclick="navigateTo('reports')"><span class="qa-icon">📈</span><span>प्रतिवेदन हेर्नुहोस्<br><small>View Reports</small></span></button>
+        <button class="quick-action-btn" onclick="navigateTo('import')"><span class="qa-icon">📊</span><span>Excel आयात<br><small>Import from Excel</small></span></button>
+        <button class="quick-action-btn" onclick="navigateTo('import')"><span class="qa-icon">💾</span><span>ब्याकअप<br><small>Backup Data</small></span></button>
+      </div>
+      <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏫 कक्षावार अवस्था | Class Overview</div>
+            <button class="btn btn-ghost btn-sm" onclick="DashboardPage.refresh()">🔄</button>
+          </div>
+          <div id="class-overview-list"><div class="text-muted text-center" style="padding:32px">Loading...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">📋 हालका गतिविधि | Recent Activity</div></div>
+          <div id="recent-activity"><div class="text-muted text-center" style="padding:32px">Loading...</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ATTENDANCE ══ -->
+    <section id="page-attendance" class="page">
+      <div class="attendance-controls">
+        <div>
+          <label style="display:block;font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">📅 मिति (BS Date)</label>
+          <div class="date-picker-group">
+            <select id="att-year" style="flex:2"></select>
+            <select id="att-month" style="flex:3"></select>
+            <select id="att-day" style="flex:1"></select>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:0.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px">🏫 कक्षा (Class)</label>
+          <select id="att-class-select" class="class-select"></select>
+        </div>
+        <div>
+          <button id="att-load-btn" class="btn btn-primary" style="width:100%">📂 लोड गर्नुहोस्</button>
+        </div>
+      </div>
+
+      <div class="attendance-table-wrapper">
+        <div class="att-table-header">
+          <div>
+            <div class="att-date-display" id="att-date-display">—</div>
+            <div class="att-class-display" id="att-class-display">—</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)" id="att-date-display-en">—</div>
+          </div>
+          <div class="att-stats-row">
+            <div class="att-stat present">✓ <span id="att-stat-present">0</span></div>
+            <div class="att-stat absent">✗ <span id="att-stat-absent">0</span></div>
+            <div style="font-size:0.85rem;color:var(--text-muted)">/ <span id="att-stat-total">0</span> जम्मा</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="att-mark-all-present" class="btn btn-success btn-sm">✅ सबै उपस्थित</button>
+            <button id="att-mark-all-absent" class="btn btn-danger btn-sm">❌ सबै अनुपस्थित</button>
+            <button id="att-print-btn" class="btn btn-ghost btn-sm">🖨️ Print</button>
+            <button id="att-export-day-btn" class="btn btn-ghost btn-sm">📥 Excel</button>
+          </div>
+        </div>
+        <div class="att-table-actions">
+          <input type="text" id="att-search" class="search-box" placeholder="🔍 नाम वा ID खोज्नुहोस् — Search student name or ID">
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+            <span style="font-size:0.82rem;color:var(--text-muted)">Legend:</span>
+            <span class="att-stat present" style="padding:3px 10px">✓ उपस्थित</span>
+            <span class="att-stat absent" style="padding:3px 10px">✗ अनुपस्थित</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:44px 1fr 140px 180px;padding:8px 24px;border-bottom:1px solid var(--border-subtle);background:rgba(192,57,43,0.05)">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-align:center">#</div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted)">विद्यार्थीको नाम / Student Name</div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted)">जन्म मिति / DOB</div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);text-align:right">हाजिरी ▸ उपस्थित | अनुपस्थित</div>
+        </div>
+        <div id="student-list">
+          <div class="no-students-msg">
+            <div class="empty-icon">📋</div>
+            <h3>Select a class and click Load</h3>
+            <p>कक्षा छान्नुहोस् र हाजिरी लोड गर्नुहोस्।</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="save-bar">
+        <div class="save-bar-msg">हाजिरी स्वचालित रूपमा सुरक्षित हुन्छ। Attendance auto-saves after each action.</div>
+        <div class="save-indicator" id="save-indicator"><span class="save-dot"></span> तयार</div>
+        <button id="att-save-btn" class="btn btn-primary">💾 अहिले सुरक्षित गर्नुहोस्</button>
+      </div>
+    </section>
+
+    <!-- ══ STUDENTS ══ -->
+    <section id="page-students" class="page">
+      <div class="page-header">
+        <div>
+          <h1>🎒 विद्यार्थी व्यवस्थापन</h1>
+          <div class="page-subtitle">Student Management — Alphabetically Sorted</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="import-excel-btn" class="btn btn-ghost">📊 Excel आयात</button>
+          <button id="add-student-btn" class="btn btn-primary">+ विद्यार्थी थप्नुहोस्</button>
+        </div>
+      </div>
+      <div class="students-toolbar">
+        <select id="students-class-filter" class="class-select" style="width:auto;min-width:220px"></select>
+        <input type="text" id="students-search" class="search-box" placeholder="🔍 नाम वा ID खोज्नुहोस्" style="flex:1;min-width:200px">
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);overflow:auto">
+        <table class="students-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>नाम / Name</th>
+              <th>Student ID</th>
+              <th>लिङ्ग / Gender</th>
+              <th>जन्म मिति / DOB</th>
+              <th>सम्पर्क / Contact</th>
+              <th>कार्य / Actions</th>
+            </tr>
+          </thead>
+          <tbody id="students-tbody">
+            <tr><td colspan="7" class="text-muted text-center" style="padding:48px">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══ REPORTS ══ -->
+    <section id="page-reports" class="page">
+      <div class="page-header">
+        <div>
+          <h1>📈 मासिक हाजिरी प्रतिवेदन</h1>
+          <div class="page-subtitle">Monthly Attendance Report — Class Wise</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="print-report-btn" class="btn btn-ghost">🖨️ Print</button>
+          <button id="export-report-btn" class="btn btn-gold">📥 Excel निर्यात</button>
+        </div>
+      </div>
+      <div class="report-controls">
+        <div class="form-group" style="margin:0;flex:1;min-width:180px">
+          <label>🏫 कक्षा / Class</label>
+          <select id="report-class" class="class-select"></select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:130px">
+          <label>📅 वर्ष / Year (BS)</label>
+          <select id="report-year"></select>
+        </div>
+        <div class="form-group" style="margin:0;flex:1;min-width:180px">
+          <label>🗓️ महिना / Month</label>
+          <select id="report-month"></select>
+        </div>
+        <button class="btn btn-primary" onclick="ReportsPage.generateReport()">📊 प्रतिवेदन हेर्नुहोस्</button>
+      </div>
+      <div id="low-att-alerts"></div>
+      <div id="report-summary-stats" style="margin-bottom:20px"></div>
+      <div class="card" style="overflow:auto">
+        <div id="report-table-container">
+          <div class="text-muted text-center" style="padding:48px">
+            <div style="font-size:3rem;margin-bottom:12px">📊</div>
+            Select class and month to generate report
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ IMPORT/EXPORT ══ -->
+    <section id="page-import" class="page">
+      <div class="page-header">
+        <h1>📤 डेटा आयात / निर्यात</h1>
+        <div class="page-subtitle">Import students from EMIS Excel / Export & Backup</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start">
+
+        <!-- Import card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 Excel / EMIS आयात</div>
+          </div>
+
+          <div class="form-group">
+            <label>🏫 कक्षामा आयात गर्नुहोस् / Import to Class</label>
+            <select id="import-class-select" class="class-select"></select>
+          </div>
+
+          <div class="drop-zone" id="drop-zone">
+            <div class="dz-icon">📂</div>
+            <h3>Excel फाइल यहाँ छोड्नुहोस्</h3>
+            <p>Drag &amp; Drop your .xlsx or .csv file here<br>
+              <small style="color:var(--brand-gold)">✨ Any column names accepted — column mapper will appear after upload</small></p>
+            <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none">
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+            <button id="download-template-btn" class="btn btn-ghost btn-sm">📥 Download EMIS Template</button>
+            <span style="font-size:0.78rem;color:var(--text-muted)">Accepts any Excel format</span>
+          </div>
+
+          <!-- ⬇ Column mapper UI injected here by import.js after file upload -->
+          <div id="import-preview-section" class="hidden" style="margin-top:20px"></div>
+        </div>
+
+        <!-- Right sidebar: backup + tips -->
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">💾 ब्याकअप र पुनर्स्थापना</div>
+            </div>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:18px">
+              सम्पूर्ण डेटा JSON ढाँचामा सुरक्षित गर्नुहोस्।<br>
+              Export all data as JSON for backup or transfer.
+            </p>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <button id="export-all-btn" class="btn btn-gold btn-full">💾 सम्पूर्ण ब्याकअप डाउनलोड</button>
+              <button id="import-backup-btn" class="btn btn-ghost btn-full">📂 ब्याकअपबाट पुनर्स्थापना</button>
+              <input type="file" id="backup-file-input" accept=".json" style="display:none">
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="margin-bottom:14px">ℹ️ Excel Import Guide</div>
+            <div style="font-size:0.83rem;color:var(--text-muted);line-height:2">
+              ✅ Any column name works<br>
+              ✅ Nepali or English headers<br>
+              ✅ .xlsx, .xls, .csv supported<br>
+              ✅ Auto-detects common columns<br>
+              ✅ Manual column mapping<br>
+              <hr style="border-color:var(--border-subtle);margin:8px 0">
+              <strong style="color:var(--text-secondary)">How to import:</strong><br>
+              1. Upload your Excel file<br>
+              2. Map columns (auto-detected)<br>
+              3. Click Preview to verify<br>
+              4. Confirm Import ✅
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SETTINGS ══ -->
+    <section id="page-settings" class="page">
+      <div class="page-header">
+        <h1>⚙️ सेटिङ</h1>
+        <div class="page-subtitle">School Settings & Configuration</div>
+      </div>
+      <div class="settings-section">
+        <h3>🏫 विद्यालय जानकारी | School Information</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="form-group"><label>विद्यालयको नाम (नेपाली)</label><input type="text" id="school-name-input" placeholder="जस्तै: श्री जनता माध्यमिक विद्यालय"></div>
+          <div class="form-group"><label>School Name (English)</label><input type="text" id="school-name-en" placeholder="e.g. Shree Janata Secondary School"></div>
+          <div class="form-group"><label>EMIS Code</label><input type="text" id="school-emis-code" placeholder="EMIS school code"></div>
+          <div class="form-group"><label>जिल्ला / District</label><input type="text" id="school-district" placeholder="e.g. काठमाडौँ"></div>
+          <div class="form-group"><label>प्रधानाध्यापक / Principal</label><input type="text" id="school-principal" placeholder="Principal's name"></div>
+          <div class="form-group"><label>शैक्षिक वर्ष / Academic Year (BS)</label><input type="number" id="academic-year-input" value="2083" min="2083" max="2090"></div>
+        </div>
+        <button id="save-school-btn" class="btn btn-primary mt-16">💾 सुरक्षित गर्नुहोस्</button>
+      </div>
+      <!-- User Management (Admin) -->
+      <div class="settings-section" id="user-mgmt-section">
+        <h3>👤 प्रयोगकर्ता व्यवस्थापन | User Management <span class="badge-admin">Admin Only</span></h3>
+        <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:16px">Reset passwords for any class teacher account.</p>
+        <div id="users-table-container"></div>
+      </div>
+
+      <!-- Change My Password (all users) -->
+      <div class="settings-section">
+        <h3>🔑 पासवर्ड परिवर्तन | Change Password</h3>
+        <div style="max-width:400px">
+          <div class="form-group"><label>हालको पासवर्ड / Current Password</label><input type="password" id="chpw-current" placeholder="Current password"></div>
+          <div class="form-group"><label>नयाँ पासवर्ड / New Password</label><input type="password" id="chpw-new" placeholder="New password"></div>
+          <div class="form-group"><label>पुष्टि गर्नुहोस् / Confirm New Password</label><input type="password" id="chpw-confirm" placeholder="Repeat new password"></div>
+          <button id="change-pw-btn" class="btn btn-primary">🔑 पासवर्ड बदल्नुहोस्</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>ℹ️ बारेमा | About</h3>
+        <div style="font-size:0.88rem;color:var(--text-muted);line-height:2">
+          <div><strong>हाजिरी व्यवस्थापन प्रणाली</strong> — Nepal School Attendance System</div>
+          <div>Bikram Sambat Calendar Support: 2080–2090 BS</div>
+          <div>Designed for Nepal Government Schools (EMIS Compatible)</div>
+          <div>Data stored locally in browser (localStorage)</div>
+          <div style="margin-top:8px;color:var(--text-primary)">Version 1.1.0 | 2083 BS</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Add/Edit Student -->
+<div class="modal-overlay hidden" id="student-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="student-modal-title">नयाँ विद्यार्थी थप्नुहोस्</h3>
+      <button class="modal-close" onclick="document.getElementById('student-modal-overlay').classList.add('hidden')">✕</button>
+    </div>
+    <form id="student-form">
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group"><label>Student ID *</label><input type="text" id="student-id-input" placeholder="Auto-generated" required></div>
+          <div class="form-group"><label>🏫 कक्षा / Class *</label><select id="student-class"></select></div>
+        </div>
+        <div class="form-group"><label>नाम (नेपाली) * Full Name in Nepali</label><input type="text" id="student-name" placeholder="जस्तै: राम प्रसाद शर्मा" required></div>
+        <div class="form-group"><label>Name (English)</label><input type="text" id="student-name-en" placeholder="e.g. Ram Prasad Sharma"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label>लिङ्ग / Gender</label>
+            <select id="student-gender">
+              <option value="male">👦 छात्र (Male)</option>
+              <option value="female">👧 छात्रा (Female)</option>
+              <option value="other">🧑 अन्य (Other)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>जन्म मिति / Date of Birth</label><input type="text" id="student-dob" placeholder="e.g. 2068-04-15 (BS)"></div>
+        </div>
+        <div class="form-group"><label>अभिभावक सम्पर्क / Guardian Contact</label><input type="text" id="student-contact" placeholder="Phone number"></div>
+        <div class="form-group"><label>नोट / Notes</label><textarea id="student-notes" rows="2" placeholder="Any additional notes..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancel-student-btn">रद्द गर्नुहोस्</button>
+        <button type="submit" class="btn btn-primary">💾 सुरक्षित गर्नुहोस्</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal (Admin) -->
+<div class="modal-overlay hidden" id="reset-pw-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>🔑 पासवर्ड रिसेट गर्नुहोस्</h3>
+      <button class="modal-close" onclick="document.getElementById('reset-pw-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(192,57,43,0.08);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:16px;font-size:0.88rem">
+        Resetting password for: <strong id="reset-pw-target-name">—</strong>
+      </div>
+      <div class="form-group"><label>नयाँ पासवर्ड / New Password</label><input type="password" id="reset-pw-new" placeholder="Enter new password"></div>
+      <div class="form-group"><label>पुष्टि / Confirm</label><input type="password" id="reset-pw-confirm" placeholder="Repeat new password"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('reset-pw-modal').classList.add('hidden')">रद्द</button>
+      <button class="btn btn-primary" onclick="adminResetPassword()">✅ रिसेट गर्नुहोस्</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/nepali-calendar.js"></script>
+<script type="module" src="js/firebase-init.js"></script>
+<script src="js/db.js"></script>
+<script src="js/attendance.js"></script>
+<script src="js/students.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/import.js"></script>
+<script src="js/app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('Service Worker Registered!', reg))
+        .catch(err => console.error('Service Worker Failed!', err));
+    });
+  }
+</script>
+</body>
+</html>
