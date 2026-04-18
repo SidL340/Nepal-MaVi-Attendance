@@ -340,6 +340,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Logout
   document.getElementById('logout-btn')?.addEventListener('click', logout);
 
+  // Topbar manual sync button
+  const tbSyncBtn = document.getElementById('topbar-sync-btn');
+  if (tbSyncBtn) {
+    tbSyncBtn.addEventListener('click', async () => {
+      const originalText = tbSyncBtn.textContent;
+      tbSyncBtn.textContent = '⏳';
+      tbSyncBtn.disabled = true;
+      const count = await DB.syncFromCloud();
+      if (count >= 0) {
+        showToast('Database Synchronized! (' + count + ' items)', 'success', '✅');
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        showToast('Sync failed. Check internet.', 'error', '❌');
+      }
+      tbSyncBtn.textContent = originalText;
+      tbSyncBtn.disabled = false;
+    });
+  }
+
   // Check if already logged in (session restore)
   const active = DB.getActiveUser();
   if (active) {
