@@ -359,18 +359,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Start real-time live sync
+  if (window.DB && DB.startLiveSync) {
+    DB.startLiveSync(() => {
+      // Only show toast and refresh if a user is actively logged in and looking at a page
+      if (DB.getActiveUser()) {
+        showToast('Live Update Received ☁️', 'info', '🔄', 2500);
+        const activePage = document.querySelector('.page.active');
+        if (activePage) {
+           const pid = activePage.id.replace('page-', '');
+           if (pid === 'dashboard' && window.DashboardPage) DashboardPage.refresh();
+           if (pid === 'attendance' && window.AttendancePage) AttendancePage.loadAttendance();
+           if (pid === 'students' && window.StudentsPage) StudentsPage.loadStudents();
+           if (pid === 'reports' && window.ReportsPage) ReportsPage.generateReport();
+        }
+      }
+    });
+  }
+
   // Check if already logged in (session restore)
   const active = DB.getActiveUser();
   if (active) {
     onLoginSuccess(active);
   } else {
     initLogin();
-    // Auto-sync in background so new devices get the latest passwords and settings before logging in
-    if (window.DB && DB.syncFromCloud) {
-      DB.syncFromCloud().then(count => {
-        if (count > 0) console.log('Auto-synced ' + count + ' items from cloud.');
-      }).catch(e => console.log('Auto-sync failed:', e));
-    }
   }
 });
 

@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-import { getFirestore, enableIndexedDbPersistence, collection, doc, setDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
+import { getFirestore, enableIndexedDbPersistence, collection, doc, setDoc, getDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAX_COMiCzAqTB_ScMvHD2p0hpTYHlzSU0",
@@ -27,6 +27,6 @@ enableIndexedDbPersistence(db)
 
 // Expose Firebase functions to window global so our traditional db.js can access them
 window.FirestoreDB = db;
-window.FirestoreFns = { collection, doc, setDoc, getDoc, getDocs };
+window.FirestoreFns = { collection, doc, setDoc, getDoc, getDocs, onSnapshot };
 
 console.log('🔥 Firebase Initialized with Offline Persistence Enabled');

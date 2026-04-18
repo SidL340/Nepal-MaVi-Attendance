@@ -60,6 +60,42 @@ const DB = (() => {
     }
   }
 
+  // Live real-time sync across devices
+  let unsubscribeLiveSync = null;
+
+  function startLiveSync(onDataChanged) {
+    if (!window.FirestoreDB || !window.FirestoreFns) return;
+    try {
+      const { collection, onSnapshot } = window.FirestoreFns;
+      const colRef = collection(window.FirestoreDB, "nepalmavi-db");
+      
+      unsubscribeLiveSync = onSnapshot(colRef, (snap) => {
+        let changed = false;
+        snap.docChanges().forEach(change => {
+          if (change.type === 'added' || change.type === 'modified') {
+            const key = change.doc.id;
+            const data = change.doc.data();
+            if (data && data.payload) {
+              const currentStr = localStorage.getItem(key);
+              if (currentStr !== data.payload) {
+                // To avoid triggering recursive updates in set(), we write directly to localStorage
+                localStorage.setItem(key, data.payload);
+                changed = true;
+              }
+            }
+          }
+        });
+        if (changed && onDataChanged) {
+          onDataChanged();
+        }
+      }, (error) => {
+        console.error("Live sync error: ", error);
+      });
+    } catch (e) {
+      console.error('Cloud Live Sync Error: ', e);
+    }
+  }
+
   // ── School ──────────────────────────────────────────────
   function getSchool() {
     return get(KEYS.SCHOOL) || {
@@ -249,7 +285,7 @@ const DB = (() => {
     getAttendance, saveAttendance, getMonthlyAttendance, getAllAttendanceForClass,
     getSettings, saveSettings,
     exportAll, importAll,
-    syncFromCloud,
+    syncFromCloud, startLiveSync,
   };
 })();
 
